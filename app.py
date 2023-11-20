@@ -204,6 +204,32 @@ def add_multi_mask(video_state, interactive_state, mask_dropdown):
         operation_log = [("Please click the left image to generate mask.", "Error"), ("","")]
     return interactive_state, gr.update(choices=interactive_state["multi_mask"]["mask_names"], value=mask_dropdown), select_frame, [[],[]], operation_log
 
+def undo_click(video_state, click_state):
+    if len(click_state[0]) > 0:
+         click_state[0] = click_state[0][:-1]
+         clcik_state[0] = click_state[1][:-1]
+
+    if len(click_state) > 0:
+        prompt = {
+            "prompt_type": ["click"],
+            "input_point": click_state[0],
+            "input_label": click_state[1],
+            "multimask_output": "True"
+        }
+        mask, logit, painted_image = model.first_frame_click(
+            image = video_state["origin_images"][video_state["select_frame_number"]],
+            points = np.array(prompt["input_point"]),
+            labels = np.array(prompt["input_label"]),
+            multimask = prompt["multimask_output"]
+        )
+        video_state["masks"][video_state["select_frame_number"]] = mask
+        video_state["logits"][video_state["select_frame_number"]] = logit
+        video_state["painted_images"][video_state["select_frame_number"]] = painted_image
+        operation_log = [("",""), ("Use SAM for segment. You can try add positive and negative points by clicking. Or press Clear clicks button to refresh the image. Press Add mask button when you are satisfied with the segment","Normal")]
+        return painted_image, click_state, operation_log
+    else:
+        return clear_click(video_state, click_state)
+
 def clear_click(video_state, click_state):
     click_state = [[],[]]
     template_frame = video_state["origin_images"][video_state["select_frame_number"]]
@@ -455,6 +481,7 @@ with gr.Blocks() as iface:
                                 visible=False)
                             remove_mask_button = gr.Button(value="Remove mask", interactive=True, visible=False) 
                             clear_button_click = gr.Button(value="Clear clicks", interactive=True, visible=False).style(height=160)
+                            undo_button_click = gr.Button(value="Undo clicks", interactive=True, visible=True)
                             Add_mask_button = gr.Button(value="Add mask", interactive=True, visible=False)
                     template_frame = gr.Image(type="pil",interactive=True, elem_id="template_frame", visible=False).style(height=360)
                     image_selection_slider = gr.Slider(minimum=1, maximum=100, step=1, value=1, label="Track start frame", visible=False)
@@ -585,6 +612,14 @@ with gr.Blocks() as iface:
         inputs = [video_state, click_state,],
         outputs = [template_frame,click_state, run_status],
     )
+
+    # points undo
+    undo_button_click.click(
+        fn = undo_click,
+        inputs = [video_state, click_state,],
+        outputs = [template_frame, click_state, run_status]
+    )
+    
     # set example
     gr.Markdown("##  Examples")
     gr.Examples(
