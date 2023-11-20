@@ -97,3 +97,6 @@ If you find this work useful for your research or applications, please cite usin
 ## :clap: Acknowledgements
 
 The project is based on [Segment Anything](https://github.com/facebookresearch/segment-anything), [XMem](https://github.com/hkchengrex/XMem), and [E2FGVI](https://github.com/MCG-NKU/E2FGVI). Thanks for the authors for their efforts.
+
+## :bookmark: Action List
+Trainnig the SA in vertical field.
