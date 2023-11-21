@@ -158,6 +158,16 @@ def get_resize_ratio(resize_ratio_slider, interactive_state):
 
     return interactive_state
 
+# use yolo to generate mask
+def yolo_track(video_state):
+  template_frame = video_state["origin_images"][video_state["select_frame_number"]]
+  results = yolo(template_frame)
+  results = results.pandas().xyxy
+  for i, rst in enumerate(results):
+    print(results[i])
+  operation_log = [("",""), ("Clear points history and refresh the image.","Normal")]
+  return template_frame
+    
 # use sam to get the mask
 def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr.SelectData):
     """
@@ -410,6 +420,9 @@ args.device = "cuda:0"
 # initialize sam, xmem, e2fgvi models
 model = TrackingAnything(SAM_checkpoint, xmem_checkpoint, e2fgvi_checkpoint,args)
 
+# import yolo
+yolo = torch.hub.load('yolov5', 'custom', path='/content/best.pt', source = 'local')
+yolo = yolo.cpu()
 
 title = """<p><h1 align="center">Track-Anything</h1></p>
     """
@@ -483,6 +496,7 @@ with gr.Blocks() as iface:
                             clear_button_click = gr.Button(value="Clear clicks", interactive=True, visible=False).style(height=160)
                             undo_button_click = gr.Button(value="Undo clicks", interactive=True, visible=True)
                             Add_mask_button = gr.Button(value="Add mask", interactive=True, visible=False)
+                            yolo_track_button = gr.Button(value="Yolo track", interactive = True, visible=True)
                     template_frame = gr.Image(type="pil",interactive=True, elem_id="template_frame", visible=False).style(height=360)
                     image_selection_slider = gr.Slider(minimum=1, maximum=100, step=1, value=1, label="Track start frame", visible=False)
                     track_pause_number_slider = gr.Slider(minimum=1, maximum=100, step=1, value=1, label="Track end frame", visible=False)
@@ -618,6 +632,13 @@ with gr.Blocks() as iface:
         fn = undo_click,
         inputs = [video_state, click_state,],
         outputs = [template_frame, click_state, run_status]
+    )
+
+    # Yolo generate mask
+    yolo_track_button.click(
+      fn = yolo_track,
+      input = [video_state],
+      outputs = [template_frame]
     )
     
     # set example
