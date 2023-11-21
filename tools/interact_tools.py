@@ -46,7 +46,7 @@ class SamControler():
     #     return 
     
     
-    def first_frame_click(self, image: np.ndarray, points:np.ndarray, labels: np.ndarray, multimask=True,mask_color=3):
+    def first_frame_click(self, image: np.ndarray, points:np.ndarray, boxes: np.ndarray,labels: np.ndarray, mode: any, multimask=True,mask_color=3):
         '''
         it is used in first frame in video
         return: mask, logit, painted image(mask+point)
@@ -74,8 +74,11 @@ class SamControler():
             prompts = {
                 'point_coords': points,
                 'point_labels': labels,
+                'boxes': boxes
             }
-            masks, scores, logits = self.sam_controler.predict(prompts, 'point', multimask)
+            if mode == None:
+                mode = 'point'
+            masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
             mask, logit = masks[np.argmax(scores)], logits[np.argmax(scores), :, :]
             
         
