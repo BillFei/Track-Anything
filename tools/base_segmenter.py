@@ -71,6 +71,12 @@ class BaseSegmenter:
                                 point_labels=prompts['point_labels'], 
                                 mask_input=prompts['mask_input'], 
                                 multimask_output=multimask)
+        elif mode == 'boxes':
+            masks, scores, logits = self.predictor.predict(point_coords=None,
+                point_labels=None,
+                boxes=prompts['boxes'],
+                multimask_output=multimask
+                )
         else:
             raise("Not implement now!")
         # masks (n, h, w), scores (n,), logits (n, 256, 256)
