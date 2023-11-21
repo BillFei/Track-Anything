@@ -164,9 +164,24 @@ def yolo_track(video_state):
   results = yolo(template_frame)
   results = results.pandas().xyxy
   for i, rst in enumerate(results):
-    print(results[i])
+    boxes.append(results[i][:3])
+
+  boxes = np.asarray(boxes)
+
+  mask, logit, painted_image = model.first_frame_click( 
+                                                      image=video_state["origin_images"][video_state["select_frame_number"]], 
+                                                      points=None,
+                                                      labels= np.asarray([0]),
+                                                      multimask=True,
+                                                      boxes=boxes,
+                                                      mode='boxes'
+                                                      )
+  video_state["masks"][video_state["select_frame_number"]] = mask
+  video_state["logits"][video_state["select_frame_number"]] = logit
+  video_state["painted_images"][video_state["select_frame_number"]] = painted_image
+  
   operation_log = [("",""), ("Clear points history and refresh the image.","Normal")]
-  return template_frame
+  return painted_image
     
 # use sam to get the mask
 def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr.SelectData):
