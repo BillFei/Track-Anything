@@ -637,7 +637,7 @@ with gr.Blocks() as iface:
     # Yolo generate mask
     yolo_track_button.click(
       fn = yolo_track,
-      input = [video_state],
+      inputs = [video_state],
       outputs = [template_frame]
     )
     
