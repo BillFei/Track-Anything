@@ -57,7 +57,7 @@ class BaseSegmenter:
         whem mask_outputs=True, mask_input=logits[np.argmax(scores), :, :][None, :, :]
         """
         assert self.embedded, 'prediction is called before set_image (feature embedding).'
-        assert mode in ['point', 'box', 'mask', 'both'], 'mode must be point, mask, or both'
+        assert mode in ['point', 'boxes', 'mask', 'both'], 'mode must be point, mask, or both'
         
         if mode == 'point':
             masks, scores, logits = self.predictor.predict(point_coords=prompts['point_coords'], 
