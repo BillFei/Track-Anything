@@ -169,7 +169,7 @@ def yolo_track(video_state):
   boxes = np.asarray(boxes)
 
   model.samcontroler.sam_controler.reset_image()
-  model.samcontroler.sam_controler.set_image(video_state["origin_images"][image_selection_slider])
+  model.samcontroler.sam_controler.set_image(video_state["origin_images"][video_state["select_frame_number"]])
 
   mask, logit, painted_image = model.first_frame_click( 
                                                       image=video_state["origin_images"][video_state["select_frame_number"]], 
