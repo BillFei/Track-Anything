@@ -163,6 +163,7 @@ def yolo_track(video_state):
   template_frame = video_state["origin_images"][video_state["select_frame_number"]]
   results = yolo(template_frame)
   results = results.pandas().xyxy
+  boxes = []
   for i, rst in enumerate(results):
     boxes.append(results[i][:3])
   boxes = np.asarray(boxes)
