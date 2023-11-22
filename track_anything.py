@@ -37,7 +37,7 @@ class TrackingAnything():
                                                                          boxes=boxes,
                                                                          labels=labels,
                                                                          mode=mode,
-                                                                         multimask)
+                                                                         multimask=multimask)
         return mask, logit, painted_image
     
     # def interact(self, image: np.ndarray, same_image_flag: bool, points:np.ndarray, labels: np.ndarray, logits: np.ndarray=None, multimask=True):
