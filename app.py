@@ -183,7 +183,7 @@ def yolo_track(video_state):
   video_state["painted_images"][video_state["select_frame_number"]] = painted_image
   
   operation_log = [("",""), ("Clear points history and refresh the image.","Normal")]
-  return painted_image
+  return painted_image,video_state
     
 # use sam to get the mask
 def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr.SelectData):
@@ -655,7 +655,7 @@ with gr.Blocks() as iface:
     yolo_track_button.click(
       fn = yolo_track,
       inputs = [video_state],
-      outputs = [template_frame]
+      outputs = [template_frame, video_state]
     )
     
     # set example
