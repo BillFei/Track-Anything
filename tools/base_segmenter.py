@@ -72,7 +72,7 @@ class BaseSegmenter:
                                 mask_input=prompts['mask_input'], 
                                 multimask_output=multimask)
         elif mode == 'boxes':
-            masks, scores, logits = self.predictor.predict(point_coords=None,
+            masks, scores, logits = self.predictor.predict_torch(point_coords=None,
                 point_labels=None,
                 boxes=prompts['boxes'],
                 multimask_output=multimask
