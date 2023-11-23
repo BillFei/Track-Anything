@@ -66,7 +66,7 @@ class BaseSegmenter:
         elif mode == 'boxes':
             masks, scores, logits = self.predictor.predict_torch(point_coords=None, 
                                 point_labels=None,
-                                box = prompts['boxes'], 
+                                boxes = prompts['boxes'], 
                                 multimask_output=multimask)
             masks = masks.detach().cpu().numpy()
             scores = scores.detach().cpu().numpy()
