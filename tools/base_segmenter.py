@@ -62,15 +62,7 @@ class BaseSegmenter:
         if mode == 'point':
             masks, scores, logits = self.predictor.predict(point_coords=prompts['point_coords'], 
                                 point_labels=prompts['point_labels'], 
-                                multimask_output=multimask)
-        elif mode == 'boxes':
-            masks, scores, logits = self.predictor.predict_torch(point_coords=None, 
-                                point_labels=None,
-                                boxes = prompts['boxes'], 
-                                multimask_output=multimask)
-            masks = masks.detach().cpu().numpy()
-            scores = scores.detach().cpu().numpy()
-            logits = logits.detach().cpu().numpy()
+                                multimask_output=multimask)    
         elif mode == 'mask':
             masks, scores, logits = self.predictor.predict(mask_input=prompts['mask_input'], 
                                 multimask_output=multimask)
@@ -85,6 +77,9 @@ class BaseSegmenter:
                 boxes=prompts['boxes'],
                 multimask_output=multimask
                 )
+            masks = masks.detach().cpu().numpy()
+            scores = scores.detach().cpu().numpy()
+            logits = logits.detach().cpu().numpy()
         else:
             raise("Not implement now!")
         # masks (n, h, w), scores (n,), logits (n, 256, 256)
