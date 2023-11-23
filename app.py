@@ -160,13 +160,18 @@ def get_resize_ratio(resize_ratio_slider, interactive_state):
 
 # use yolo to generate mask
 def yolo_track(video_state):
+  pre = model.samcontroler.sam_controler.predictor
   template_frame = video_state["origin_images"][video_state["select_frame_number"]]
   results = yolo(template_frame)
   results = results.pandas().xyxy
-  boxes = []
-  for i, rst in enumerate(results):
-    boxes.append(results[i][:3])
-  boxes = np.asarray(boxes)
+  boxes = np.array(results)
+  boxes = boxes[:,:,:4]
+  boxes = boxes[0]
+  boxes = torch.tensor(boxes.tolist(), device=pre.device)
+  print(template_frame.shape)
+  print(template_frame.shape[:2])
+  boxes = model.samcontroler.sam_controler.predictor.transform.apply_boxes_torch(boxes, template_frame.shape[:2])
+  
 
   model.samcontroler.sam_controler.reset_image()
   model.samcontroler.sam_controler.set_image(video_state["origin_images"][video_state["select_frame_number"]])
