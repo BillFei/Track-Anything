@@ -96,7 +96,6 @@ class SamControler():
                 'boxes': boxes
             }
             if mode == 'boxes':
-                self.batched_mask_input(
                 #masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
                 masks, scores, logtits = self.batched_mask_input(image, boxes)
                 mask, logit = masks[np.argmax(scores)], logits[np.argmax(scores), :, :]
