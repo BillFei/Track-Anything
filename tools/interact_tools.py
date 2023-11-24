@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageOps
 import numpy as np
 from typing import Union
 from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
+from segment_anything.utils.transforms import ResizeLongestSide
 import matplotlib.pyplot as plt
 import PIL
 from .mask_painter import mask_painter as mask_painter2
@@ -27,6 +28,11 @@ contour_color = 2
 contour_width = 5
 
 
+def prepare_image(image, transform, device):
+    image = transform.apply_image(image)
+    image = torch.as_tensor(image, device=device.device) 
+    return image.permute(2, 0, 1).contiguous()
+
 class SamControler():
     def __init__(self, SAM_checkpoint, model_type, device):
         '''
@@ -35,6 +41,7 @@ class SamControler():
 
     
         self.sam_controler = BaseSegmenter(SAM_checkpoint, model_type, device)
+        self.resize_transform = ResizeLongestSide(self.sam_controler.image_encoder.img_size)
         
     
     # def seg_again(self, image: np.ndarray):
@@ -45,7 +52,19 @@ class SamControler():
     #     self.sam_controler.set_image(image)
     #     return 
     
-    
+    def batched_mask_input(self, image: np.ndarray, boxes: np.ndarray):
+        batched_input = [{
+            'image': prepare_image(image, self.resize_transform, self.sam_controler),
+            'boxes': boxes,
+            'original_size': image.shape[:2]
+        }]
+        output = self.sam_controler(bactched_input, multimask_output = False)
+        masks, scores, logits = output[0]['masks'], output[0]['iou_predictions'],output[0]['low_res_logits']
+        masks = masks.detach().cpu().numpy()
+        scores = scores.detach().cpu().numpy()
+        logits = logits.detach().cpu().numpy()
+        return masks, scores, logits
+        
     def first_frame_click(self, image: np.ndarray, points:np.ndarray, boxes: np.ndarray,labels: np.ndarray, mode: any, multimask=True,mask_color=3):
         '''
         it is used in first frame in video
@@ -77,10 +96,12 @@ class SamControler():
                 'boxes': boxes
             }
             if mode == 'boxes':
-                masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
+                self.batched_mask_input(
+                #masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
+                masks, scores, logtits = self.batched_mask_input(image, boxes)
                 mask, logit = masks[np.argmax(scores)], logits[np.argmax(scores), :, :]
                 h,w = mask.shape[-2:]
-                mask = mask.reshape(h,w,1)
+                mask = mask.reshape(h,w)
             else:
                 mode = 'point'
                 masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
