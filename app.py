@@ -215,6 +215,8 @@ def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr
                                                       image=video_state["origin_images"][video_state["select_frame_number"]], 
                                                       points=np.array(prompt["input_point"]),
                                                       labels=np.array(prompt["input_label"]),
+                                                      boxes=None,
+                                                      mode='point'
                                                       multimask=prompt["multimask_output"],
                                                       )
     video_state["masks"][video_state["select_frame_number"]] = mask
@@ -240,7 +242,7 @@ def add_multi_mask(video_state, interactive_state, mask_dropdown):
 def undo_click(video_state, click_state):
     if len(click_state[0]) > 0:
          click_state[0] = click_state[0][:-1]
-         clcik_state[0] = click_state[1][:-1]
+         click_state[0] = click_state[1][:-1]
 
     if len(click_state) > 0:
         prompt = {
