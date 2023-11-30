@@ -41,7 +41,7 @@ class SamControler():
 
     
         self.sam_controler = BaseSegmenter(SAM_checkpoint, model_type, device)
-        self.resize_transform = ResizeLongestSide(self.sam_controler.image_encoder.img_size)
+        self.resize_transform = ResizeLongestSide(self.sam_controler.model.image_encoder.img_size)
         
     
     # def seg_again(self, image: np.ndarray):
@@ -96,8 +96,8 @@ class SamControler():
                 'boxes': boxes
             }
             if mode == 'boxes':
-                #masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
-                masks, scores, logtits = self.batched_mask_input(image, boxes)
+                masks, scores, logits = self.sam_controler.predict(prompts, mode, multimask)
+                #masks, scores, logtits = self.batched_mask_input(image, boxes)
                 mask, logit = masks[np.argmax(scores)], logits[np.argmax(scores), :, :]
                 h,w = mask.shape[-2:]
                 mask = mask.reshape(h,w)
