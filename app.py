@@ -216,7 +216,7 @@ def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr
                                                       points=np.array(prompt["input_point"]),
                                                       labels=np.array(prompt["input_label"]),
                                                       boxes=None,
-                                                      mode='point'
+                                                      mode='point',
                                                       multimask=prompt["multimask_output"],
                                                       )
     video_state["masks"][video_state["select_frame_number"]] = mask
