@@ -255,6 +255,8 @@ def undo_click(video_state, click_state):
             image = video_state["origin_images"][video_state["select_frame_number"]],
             points = np.array(prompt["input_point"]),
             labels = np.array(prompt["input_label"]),
+            mode = 'point',
+            boxes = None,
             multimask = prompt["multimask_output"]
         )
         video_state["masks"][video_state["select_frame_number"]] = mask
