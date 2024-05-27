@@ -70,7 +70,7 @@ class BaseTracker:
 
         if first_frame_annotation is not None:   # first frame mask
             # initialisation
-            mask, labels = self.mapper.convert_mask(first_frame_annotation)
+            mask, labels = self.mapper.convert_mask(first_frame_annotation,True)
             mask = torch.Tensor(mask).to(self.device)
             self.tracker.set_all_labels(list(self.mapper.remappings.values()))
         else:

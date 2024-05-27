@@ -16,6 +16,7 @@ import torch
 from tools.painter import mask_painter
 import psutil
 import time
+from tqdm import tqdm
 try: 
     from mmcv.cnn import ConvModule
 except:
@@ -166,7 +167,6 @@ def yolo_track(video_state):
   results = results.pandas().xyxy
   boxes = np.array(results)
   boxes = boxes[:,:,:4]
-  boxes = boxes[0]
   boxes = torch.tensor(boxes.tolist(), device=pre.device)
   print(template_frame.shape)
   print(template_frame.shape[:2])
@@ -180,7 +180,7 @@ def yolo_track(video_state):
                                                       image=video_state["origin_images"][video_state["select_frame_number"]], 
                                                       points=None,
                                                       labels= np.asarray([0]),
-                                                      multimask=True,
+                                                      multimask=False,
                                                       boxes=boxes,
                                                       mode='boxes'
                                                       )
@@ -226,11 +226,14 @@ def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr
     operation_log = [("",""), ("Use SAM for segment. You can try add positive and negative points by clicking. Or press Clear clicks button to refresh the image. Press Add mask button when you are satisfied with the segment","Normal")]
     return painted_image, video_state, interactive_state, operation_log
 
+# 增加开始帧数
 def add_multi_mask(video_state, interactive_state, mask_dropdown):
     try:
         mask = video_state["masks"][video_state["select_frame_number"]]
         interactive_state["multi_mask"]["masks"].append(mask)
-        interactive_state["multi_mask"]["mask_names"].append("mask_{:03d}".format(len(interactive_state["multi_mask"]["masks"])))
+        mask_name = "mask_{:03d}".format(len(interactive_state["multi_mask"]["masks"]))
+        interactive_state["multi_mask"]["mask_names"].append(mask_name)
+        interactive_state["multi_mask"]["mask_start_frame"].append(video_state["select_frame_number"])
         mask_dropdown.append("mask_{:03d}".format(len(interactive_state["multi_mask"]["masks"])))
         select_frame, run_status = show_mask(video_state, interactive_state, mask_dropdown)
 
@@ -276,6 +279,7 @@ def clear_click(video_state, click_state):
 def remove_multi_mask(interactive_state, mask_dropdown):
     interactive_state["multi_mask"]["mask_names"]= []
     interactive_state["multi_mask"]["masks"] = []
+    interactive_state["multi_mask"]["mask_start_frame"] = []
 
     operation_log = [("",""), ("Remove all mask, please add new masks","Normal")]
     return interactive_state, gr.update(choices=[],value=[]), operation_log
@@ -291,10 +295,74 @@ def show_mask(video_state, interactive_state, mask_dropdown):
     operation_log = [("",""), ("Select {} for tracking or inpainting".format(mask_dropdown),"Normal")]
     return select_frame, operation_log
 
+#通过yolo获取mask后让sam重新生成一次mask
+def yolo_mask(image):
+    pre = model.samcontroler.sam_controler.predictor
+    yolo.conf = 0.03
+    results = yolo(image)
+    resultBoxes = results.pandas().xyxy
+    boxes = np.array(resultBoxes)
+    boxes = boxes[:,:,:4]
+    boxes = torch.tensor(boxes.tolist(),device=pre.device)
+    print(boxes)
+    print(boxes.size())
+    print(boxes.numel())
+    if boxes.numel() == 0 :
+        return None
+    boxes = model.samcontroler.sam_controler.predictor.transform.apply_boxes_torch(boxes, image.shape[:2])
+
+    mask, logit, painted_image = model.first_frame_click( 
+                                                      image=image, 
+                                                      points=None,
+                                                      labels= np.asarray([0]),
+                                                      multimask=False,
+                                                      boxes=boxes,
+                                                      mode='boxes'
+                                                      )
+    return mask
+
+# 每次都进行mask生成
+def track_per_image(frames: list, template_mask):
+    masks = []
+    logits = []
+    painted_images = []
+    for i in tqdm(range(len(frames)), desc="Tracking image"):
+        tmp_mask = yolo_mask(frames[i])
+        if tmp_mask is None:
+            mask = template_mask
+        else:
+            mask = tmp_mask
+        mask, logit, painted_image = model.xmem.track(frames[i], mask)
+        masks.append(mask)
+        logits.append(logit)
+        painted_images.append(painted_image)
+    return masks, logits, painted_images
+
+# 按照导入的mask按照start-end重新获取mask
+def mask_follow_frame(video_state, interactive_state,mask_dropdown):
+    following_frames = []
+    template_masks = []
+    if interactive_state["multi_mask"]["masks"]:
+        if len(mask_dropdown) == 0:
+            following_frames.append(video_state["origin_images"][video_state["select_frame_number"]:])
+            template_masks.append(video_state["masks"][video_state["select_frame_number"]])
+        else:
+            mask_dropdown.sort()
+            for i in range(1, len(mask_dropdown)):
+                mask_number = int(mask_dropdown[i].split("_")[1])-1
+                following_frames.append(video_state["origin_images"][interactive_state["multi_mask"]["mask_start_frame"][mask_number]:])
+                template_mask = interactive_state["multi_mask"]["masks"][mask_number]
+    else:
+        following_frames.append(video_state["origin_images"][video_state["select_frame_number"]:])
+        template_masks.append(video_state["masks"][video_state["select_frame_number"]])
+
 # tracking vos
 def vos_tracking_video(video_state, interactive_state, mask_dropdown):
     operation_log = [("",""), ("Track the selected masks, and then you can select the masks for inpainting.","Normal")]
     model.xmem.clear_memory()
+    print(video_state["select_frame_number"])
+    print(video_state["masks"])
+    #print(interactive_state)
     if interactive_state["track_end_number"]:
         following_frames = video_state["origin_images"][video_state["select_frame_number"]:interactive_state["track_end_number"]]
     else:
@@ -318,7 +386,11 @@ def vos_tracking_video(video_state, interactive_state, mask_dropdown):
         template_mask[0][0]=1
         operation_log = [("Error! Please add at least one mask to track by clicking the left image.","Error"), ("","")]
         # return video_output, video_state, interactive_state, operation_error
-    masks, logits, painted_images = model.generator(images=following_frames, template_mask=template_mask)
+    #print(video_state)
+    #masks, logits, painted_images = model.generator(images=following_frames, template_mask=template_mask)
+    print(template_mask)
+    masks, logits, painted_images = track_per_image(frames = following_frames, template_mask=template_mask)
+    #print(masks)
     # clear GPU memory
     model.xmem.clear_memory()
 
@@ -440,7 +512,7 @@ folder ="./checkpoints"
 SAM_checkpoint = download_checkpoint(sam_checkpoint_url, folder, sam_checkpoint)
 xmem_checkpoint = download_checkpoint(xmem_checkpoint_url, folder, xmem_checkpoint)
 e2fgvi_checkpoint = download_checkpoint_from_google_drive(e2fgvi_checkpoint_id, folder, e2fgvi_checkpoint)
-args.port = 12212
+args.port = 8188
 args.device = "cuda:0"
 # args.mask_save = True
 
@@ -448,7 +520,9 @@ args.device = "cuda:0"
 model = TrackingAnything(SAM_checkpoint, xmem_checkpoint, e2fgvi_checkpoint,args)
 
 # import yolo
-yolo = torch.hub.load('yolov5', 'custom', path='/content/best.pt', source = 'local')
+yolo = torch.hub.load('yolov9', 'custom', path='/data/workspace/Track-Anything/best_v9.pt', source = 'local')
+yolo.conf=0.01
+yolo.iou=0.15
 yolo = yolo.cpu()
 
 title = """<p><h1 align="center">Track-Anything</h1></p>
@@ -468,7 +542,8 @@ with gr.Blocks() as iface:
         "mask_save": args.mask_save,
         "multi_mask": {
             "mask_names": [],
-            "masks": []
+            "masks": [],
+            "mask_start_frame":[]
         },
         "track_end_number": None,
         "resize_ratio": 1
